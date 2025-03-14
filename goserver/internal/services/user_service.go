@@ -2,14 +2,13 @@ package services
 
 import (
 	"crypto/md5"
-	"crypto/rand"
 	"encoding/hex"
-	"math/big"
+	"math/rand"
 
 	"github.com/LevanPro/server/internal/models"
 )
 
-const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%"
+const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnopqrstuvwxyz23456789"
 const passwordLength = 20
 
 type UserService struct {
@@ -39,13 +38,9 @@ func (userService *UserService) generatePashedPassowrd(password string) string {
 }
 
 func (userService *UserService) generatePassword(length int) (string, error) {
-	b := make([]byte, length)
-	for i := range b {
-		randomByte, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
-		if err != nil {
-			return "", err
-		}
-		b[i] = charset[randomByte.Int64()]
+	password := make([]byte, length)
+	for i := 0; i < length; i++ {
+		password[i] = charset[rand.Intn(len(charset))]
 	}
-	return string(b), nil
+	return string(password), nil
 }
