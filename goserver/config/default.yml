@@ -1,0 +1,6 @@
+env: "dev"
+storage_path: "/home/overlord/docker-ipsec-vpn-server/etc"
+logfile_path: "/home/overlord/"
+auth_password: "mypassword12345"
+http_server:
+  address: ":8080"

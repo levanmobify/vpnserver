@@ -84,146 +84,12 @@ vpn_env_dir="/opt/src/env/vpn.env"
 if [ -f "$vpn_env_dir" ]; then
   vpn_env="$vpn_env_dir"
 fi
-vpn_gen_env="/etc/ipsec.d/vpn-gen.env"
-if [ -z "$VPN_IPSEC_PSK" ] && [ -z "$VPN_USER" ] && [ -z "$VPN_PASSWORD" ]; then
-  if [ -f "$vpn_env" ]; then
-    echo
-    echo 'Retrieving VPN credentials...'
-    . "$vpn_env"
-  elif [ -f "$vpn_gen_env" ]; then
-    echo
-    echo 'Retrieving previously generated VPN credentials...'
-    . "$vpn_gen_env"
-  else
-    echo
-    echo 'VPN credentials not set by user. Generating random PSK and password...'
-    VPN_IPSEC_PSK=$(LC_CTYPE=C tr -dc 'A-HJ-NPR-Za-km-z2-9' </dev/urandom 2>/dev/null | head -c 20)
-    VPN_USER=vpnuser
-    VPN_PASSWORD=$(LC_CTYPE=C tr -dc 'A-HJ-NPR-Za-km-z2-9' </dev/urandom 2>/dev/null | head -c 16)
-    printf '%s\n' "VPN_IPSEC_PSK='$VPN_IPSEC_PSK'" > "$vpn_gen_env"
-    printf '%s\n' "VPN_USER='$VPN_USER'" >> "$vpn_gen_env"
-    printf '%s\n' "VPN_PASSWORD='$VPN_PASSWORD'" >> "$vpn_gen_env"
-    chmod 600 "$vpn_gen_env"
-  fi
-fi
 
-# Remove whitespace and quotes around VPN variables, if any
-VPN_IPSEC_PSK=$(nospaces "$VPN_IPSEC_PSK")
-VPN_IPSEC_PSK=$(noquotes "$VPN_IPSEC_PSK")
-VPN_USER=$(nospaces "$VPN_USER")
-VPN_USER=$(noquotes "$VPN_USER")
-VPN_PASSWORD=$(nospaces "$VPN_PASSWORD")
-VPN_PASSWORD=$(noquotes "$VPN_PASSWORD")
-if [ -n "$VPN_ADDL_USERS" ] && [ -n "$VPN_ADDL_PASSWORDS" ]; then
-  VPN_ADDL_USERS=$(nospaces "$VPN_ADDL_USERS")
-  VPN_ADDL_USERS=$(noquotes "$VPN_ADDL_USERS")
-  VPN_ADDL_USERS=$(onespace "$VPN_ADDL_USERS")
-  VPN_ADDL_USERS=$(noquotes2 "$VPN_ADDL_USERS")
-  VPN_ADDL_PASSWORDS=$(nospaces "$VPN_ADDL_PASSWORDS")
-  VPN_ADDL_PASSWORDS=$(noquotes "$VPN_ADDL_PASSWORDS")
-  VPN_ADDL_PASSWORDS=$(onespace "$VPN_ADDL_PASSWORDS")
-  VPN_ADDL_PASSWORDS=$(noquotes2 "$VPN_ADDL_PASSWORDS")
-  if [ -n "$VPN_ADDL_IP_ADDRS" ]; then
-    VPN_ADDL_IP_ADDRS=$(nospaces "$VPN_ADDL_IP_ADDRS")
-    VPN_ADDL_IP_ADDRS=$(noquotes "$VPN_ADDL_IP_ADDRS")
-    VPN_ADDL_IP_ADDRS=$(onespace "$VPN_ADDL_IP_ADDRS")
-    VPN_ADDL_IP_ADDRS=$(noquotes2 "$VPN_ADDL_IP_ADDRS")
-  fi
-else
-  VPN_ADDL_USERS=""
-  VPN_ADDL_PASSWORDS=""
-  VPN_ADDL_IP_ADDRS=""
-fi
-if [ -n "$VPN_DNS_SRV1" ]; then
-  VPN_DNS_SRV1=$(nospaces "$VPN_DNS_SRV1")
-  VPN_DNS_SRV1=$(noquotes "$VPN_DNS_SRV1")
-fi
-if [ -n "$VPN_DNS_SRV2" ]; then
-  VPN_DNS_SRV2=$(nospaces "$VPN_DNS_SRV2")
-  VPN_DNS_SRV2=$(noquotes "$VPN_DNS_SRV2")
-fi
-if [ -n "$VPN_CLIENT_NAME" ]; then
-  VPN_CLIENT_NAME=$(nospaces "$VPN_CLIENT_NAME")
-  VPN_CLIENT_NAME=$(noquotes "$VPN_CLIENT_NAME")
-fi
-if [ -n "$VPN_DNS_NAME" ]; then
-  VPN_DNS_NAME=$(nospaces "$VPN_DNS_NAME")
-  VPN_DNS_NAME=$(noquotes "$VPN_DNS_NAME")
-fi
-if [ -n "$VPN_PUBLIC_IP" ]; then
-  VPN_PUBLIC_IP=$(nospaces "$VPN_PUBLIC_IP")
-  VPN_PUBLIC_IP=$(noquotes "$VPN_PUBLIC_IP")
-fi
-if [ -n "$VPN_ANDROID_MTU_FIX" ]; then
-  VPN_ANDROID_MTU_FIX=$(nospaces "$VPN_ANDROID_MTU_FIX")
-  VPN_ANDROID_MTU_FIX=$(noquotes "$VPN_ANDROID_MTU_FIX")
-fi
-if [ -n "$VPN_SHA2_TRUNCBUG" ]; then
-  VPN_SHA2_TRUNCBUG=$(nospaces "$VPN_SHA2_TRUNCBUG")
-  VPN_SHA2_TRUNCBUG=$(noquotes "$VPN_SHA2_TRUNCBUG")
-fi
-if [ -n "$VPN_PROTECT_CONFIG" ]; then
-  VPN_PROTECT_CONFIG=$(nospaces "$VPN_PROTECT_CONFIG")
-  VPN_PROTECT_CONFIG=$(noquotes "$VPN_PROTECT_CONFIG")
-fi
-if [ -n "$VPN_SPLIT_IKEV2" ]; then
-  VPN_SPLIT_IKEV2=$(nospaces "$VPN_SPLIT_IKEV2")
-  VPN_SPLIT_IKEV2=$(noquotes "$VPN_SPLIT_IKEV2")
-fi
-if [ -n "$VPN_DISABLE_IPSEC_L2TP" ]; then
-  VPN_DISABLE_IPSEC_L2TP=$(nospaces "$VPN_DISABLE_IPSEC_L2TP")
-  VPN_DISABLE_IPSEC_L2TP=$(noquotes "$VPN_DISABLE_IPSEC_L2TP")
-fi
-if [ -n "$VPN_DISABLE_IPSEC_XAUTH" ]; then
-  VPN_DISABLE_IPSEC_XAUTH=$(nospaces "$VPN_DISABLE_IPSEC_XAUTH")
-  VPN_DISABLE_IPSEC_XAUTH=$(noquotes "$VPN_DISABLE_IPSEC_XAUTH")
-fi
-if [ -n "$VPN_IKEV2_ONLY" ]; then
-  VPN_IKEV2_ONLY=$(nospaces "$VPN_IKEV2_ONLY")
-  VPN_IKEV2_ONLY=$(noquotes "$VPN_IKEV2_ONLY")
-fi
-if [ -n "$VPN_ENABLE_MODP1024" ]; then
-  VPN_ENABLE_MODP1024=$(nospaces "$VPN_ENABLE_MODP1024")
-  VPN_ENABLE_MODP1024=$(noquotes "$VPN_ENABLE_MODP1024")
-fi
-if [ -n "$VPN_ENABLE_MODP1536" ]; then
-  VPN_ENABLE_MODP1536=$(nospaces "$VPN_ENABLE_MODP1536")
-  VPN_ENABLE_MODP1536=$(noquotes "$VPN_ENABLE_MODP1536")
-fi
-if [ -n "$VPN_L2TP_NET" ]; then
-  VPN_L2TP_NET=$(nospaces "$VPN_L2TP_NET")
-  VPN_L2TP_NET=$(noquotes "$VPN_L2TP_NET")
-fi
-if [ -n "$VPN_L2TP_LOCAL" ]; then
-  VPN_L2TP_LOCAL=$(nospaces "$VPN_L2TP_LOCAL")
-  VPN_L2TP_LOCAL=$(noquotes "$VPN_L2TP_LOCAL")
-fi
-if [ -n "$VPN_L2TP_POOL" ]; then
-  VPN_L2TP_POOL=$(nospaces "$VPN_L2TP_POOL")
-  VPN_L2TP_POOL=$(noquotes "$VPN_L2TP_POOL")
-fi
-if [ -n "$VPN_XAUTH_NET" ]; then
-  VPN_XAUTH_NET=$(nospaces "$VPN_XAUTH_NET")
-  VPN_XAUTH_NET=$(noquotes "$VPN_XAUTH_NET")
-fi
-if [ -n "$VPN_XAUTH_POOL" ]; then
-  VPN_XAUTH_POOL=$(nospaces "$VPN_XAUTH_POOL")
-  VPN_XAUTH_POOL=$(noquotes "$VPN_XAUTH_POOL")
-fi
+VPN_IPSEC_PSK="$(awk '{print $5}' /etc/ipsec.secrets | cut -d'"' -f2)"
 
 if [ -z "$VPN_IPSEC_PSK" ] || [ -z "$VPN_USER" ] || [ -z "$VPN_PASSWORD" ]; then
-  exiterr "All VPN credentials must be specified. Edit your 'env' file and re-enter them."
-fi
-if printf '%s' "$VPN_IPSEC_PSK $VPN_USER $VPN_PASSWORD $VPN_ADDL_USERS $VPN_ADDL_PASSWORDS" | LC_ALL=C grep -q '[^ -~]\+'; then
-  exiterr "VPN credentials must not contain non-ASCII characters."
-fi
-case "$VPN_IPSEC_PSK $VPN_USER $VPN_PASSWORD $VPN_ADDL_USERS $VPN_ADDL_PASSWORDS" in
-  *[\\\"\']*)
-    exiterr "VPN credentials must not contain these special characters: \\ \" '"
-    ;;
-esac
-if printf '%s' "$VPN_USER $VPN_ADDL_USERS" | tr ' ' '\n' | sort | uniq -c | grep -qv '^ *1 '; then
-  exiterr "VPN usernames must not contain duplicates."
+  VPN_IPSEC_PSK="$(LC_CTYPE=C tr -dc 'A-HJ-NPR-Za-km-z2-9' < /dev/urandom | head -c 30)"
+  echo "Generated PSK: $VPN_IPSEC_PSK"
 fi
 
 # Check DNS servers and try to resolve hostnames to IPs
@@ -493,15 +359,6 @@ ms-dns $DNS_SRV2
 EOF
 fi
 
-# Create VPN credentials
-cat > /etc/ppp/chap-secrets <<EOF
-"$VPN_USER" l2tpd "$VPN_PASSWORD" *
-EOF
-
-VPN_PASSWORD_ENC=$(openssl passwd -1 "$VPN_PASSWORD")
-cat > /etc/ipsec.d/passwd <<EOF
-$VPN_USER:$VPN_PASSWORD_ENC:xauth-psk
-EOF
 
 if [ -n "$VPN_ADDL_USERS" ] && [ -n "$VPN_ADDL_PASSWORDS" ]; then
   count=1
@@ -607,8 +464,7 @@ case $VPN_ANDROID_MTU_FIX in
     ;;
 esac
 
-# Update file attributes
-chmod 600 /etc/ipsec.secrets /etc/ppp/chap-secrets /etc/ipsec.d/passwd
+
 
 echo
 echo "Starting IPsec service..."

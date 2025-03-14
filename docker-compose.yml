@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  ipsec-mobify-server:
+    image: ipsec-mobify-v1
+    container_name: ipsec-mobify-server
+    ports:
+      - "500:500/udp"
+      - "4500:4500/udp"
+    volumes:
+      -  /lib/modules:/lib/modules:ro
+      - ./etc/ppp/chap-secrets:/etc/ppp/chap-secrets
+      - ./etc/ipsec.d/passwd:/etc/ipsec.d/passwd
+      - ./etc/ipsec.secrets:/etc/ipsec.secrets
+    environment:
+      - EXTRA_ARGS=${EXTRA_ARGS}
+    privileged: true
+    restart: always
+  goserver:
+    image: goserver
+    container_name: goserver
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./prod.yml:/app/default.yml
+      - ./etc/ppp/chap-secrets:/etc/ppp/chap-secrets
+      - ./etc/ipsec.d/passwd:/etc/ipsec.d/passwd
+      - ./etc/ipsec.secrets:/etc/ipsec.secrets
+    environment:
+      - CONFIG_PATH=/app/default.yml
+    restart: always      
