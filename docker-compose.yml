@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   ipsec-mobify-server:
-    image: ipsec-mobify-v1
+    image: lmobify/ipsec-mobify
     container_name: ipsec-mobify-server
     ports:
       - "500:500/udp"
@@ -17,7 +17,7 @@ services:
     privileged: true
     restart: always
   goserver:
-    image: goserver
+    image: lmobify/goserver
     container_name: goserver
     ports:
       - "8080:8080"
