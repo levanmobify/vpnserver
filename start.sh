@@ -1,5 +1,5 @@
-!/bin/sh
-sudo modprobe af_key
+# !/bin/sh
+# sudo modprobe af_key
 
 mkdir -p etc/ipsec.d
 mkdir -p etc/ppp

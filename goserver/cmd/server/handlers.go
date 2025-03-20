@@ -1,12 +1,23 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/LevanPro/server/internal/models"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
 )
+
+type ExecRequest struct {
+	Container string   `json:"container"`
+	Command   []string `json:"command"`
+}
 
 func (app *application) ListUsersHandler(w http.ResponseWriter, r *http.Request) {
 	users, err := app.fileService.ReadFile()
@@ -51,7 +62,7 @@ func (app *application) AddUserHandler(w http.ResponseWriter, r *http.Request) {
 
 		_, ok := usersMap[user.Username]
 		if ok {
-			app.badRequestResponse(w, r, errors.New("user with that username already exists"))
+			app.badRequestResponse(w, r, fmt.Errorf("user with that username already exists %s", user.Username))
 			return
 		}
 	}
@@ -59,7 +70,7 @@ func (app *application) AddUserHandler(w http.ResponseWriter, r *http.Request) {
 	for i, _ := range users {
 		err := app.userService.AddPassword(&users[i])
 		if err != nil {
-			app.badRequestResponse(w, r, errors.New("user with that username already exists"))
+			app.serverErrorResponse(w, r, err)
 			return
 		}
 	}
@@ -76,4 +87,127 @@ func (app *application) AddUserHandler(w http.ResponseWriter, r *http.Request) {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
+}
+
+func (app *application) RestartIPSecContainer(w http.ResponseWriter, r *http.Request) {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.47"))
+
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	ctx := context.Background()
+	timeout := 5
+
+	err = cli.ContainerRestart(ctx, "ipsec-mobify-server", container.StopOptions{
+		Timeout: &timeout,
+	})
+
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envolope{"message": "success restarting container"}, nil)
+
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+}
+
+func (app *application) RestartIPSecService(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.47"))
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	defer cli.Close()
+
+	execConfig := container.ExecOptions{
+		Cmd:          []string{"ipsec", "restart"},
+		AttachStdout: true,
+		AttachStderr: true,
+		Privileged:   true,
+	}
+
+	execIDResp, err := cli.ContainerExecCreate(ctx, "ipsec-mobify-server", execConfig)
+	if err != nil {
+		app.serverErrorResponse(w, r, fmt.Errorf("failed to create exec: %v", err))
+		return
+	}
+
+	resp, err := cli.ContainerExecAttach(ctx, execIDResp.ID, container.ExecAttachOptions{})
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	defer resp.Close()
+
+	err = app.writeJSON(w, http.StatusOK, envolope{"message": "success restarting service"}, nil)
+
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+}
+
+func (app *application) ExecCommandInContainer(w http.ResponseWriter, r *http.Request) {
+	var req ExecRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		app.badRequestResponse(w, r, errors.New("bad request"))
+		return
+	}
+
+	result, err := app.dockerExec(req.Container, req.Command)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envolope{"data": result}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+}
+
+func (app *application) dockerExec(containerName string, cmd []string) (string, error) {
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return "", err
+	}
+	defer cli.Close()
+
+	execConfig := container.ExecOptions{
+		Cmd:          cmd,
+		AttachStdout: true,
+		AttachStderr: true,
+	}
+
+	execID, err := cli.ContainerExecCreate(ctx, containerName, execConfig)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := cli.ContainerExecAttach(ctx, execID.ID, container.ExecAttachOptions{})
+	if err != nil {
+		return "", err
+	}
+	defer resp.Close()
+
+	outputBuf := new(bytes.Buffer)
+	errorBuf := new(bytes.Buffer)
+
+	_, err = stdcopy.StdCopy(outputBuf, errorBuf, resp.Reader)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode docker stream: %v", err)
+	}
+
+	return outputBuf.String(), nil
 }

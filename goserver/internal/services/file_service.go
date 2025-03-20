@@ -2,9 +2,11 @@ package services
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -62,6 +64,12 @@ func (fileService *FileService) ReadFile() ([]models.User, error) {
 		file.Close()
 	}()
 
+	psk, err := fileService.ReadPSKSecret()
+
+	if err != nil {
+		return result, err
+	}
+
 	scanner := bufio.NewScanner(file)
 
 	for scanner.Scan() {
@@ -77,7 +85,8 @@ func (fileService *FileService) ReadFile() ([]models.User, error) {
 			username = strings.Trim(username, "\"")
 
 			result = append(result, models.User{
-				Username: username,
+				Username:  username,
+				PSKSecret: psk,
 			})
 		}
 	}
@@ -103,6 +112,41 @@ func (fileService *FileService) AddUsers(users []models.User) error {
 	}
 
 	return nil
+}
+
+func (fileService *FileService) ReadPSKSecret() (string, error) {
+	path := filepath.Join(fileService.storagePath, "/ipsec.secrets")
+
+	file, err := os.Open(path) // Open without exclusive lock
+	if err != nil {
+		return "", err
+	}
+
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	re := regexp.MustCompile(`PSK\s+"([^"]+)"`)
+
+	var pskValue string
+	for scanner.Scan() {
+		line := scanner.Text()
+		match := re.FindStringSubmatch(line)
+		if len(match) > 1 {
+			pskValue = match[1]
+			break // Stop at the first match
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return "", err
+	}
+
+	if pskValue != "" {
+		return pskValue, nil
+	}
+
+	return "", errors.New("no psk found")
 }
 
 func (fileService *FileService) appendToChapSecrets(users []models.User) error {

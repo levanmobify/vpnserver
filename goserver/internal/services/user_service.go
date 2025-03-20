@@ -1,9 +1,9 @@
 package services
 
 import (
-	"crypto/md5"
-	"encoding/hex"
+	"fmt"
 	"math/rand"
+	"os/exec"
 
 	"github.com/LevanPro/server/internal/models"
 )
@@ -24,7 +24,10 @@ func (userService *UserService) AddPassword(user *models.User) error {
 		return err
 	}
 
-	hashedPassword := userService.generatePashedPassowrd(pass)
+	hashedPassword, err := GenerateMD5CryptHash(pass)
+	if err != nil {
+		return err
+	}
 
 	user.Password = pass
 	user.PasswordHashed = hashedPassword
@@ -32,9 +35,15 @@ func (userService *UserService) AddPassword(user *models.User) error {
 	return nil
 }
 
-func (userService *UserService) generatePashedPassowrd(password string) string {
-	hash := md5.Sum([]byte(password))
-	return hex.EncodeToString(hash[:])
+func GenerateMD5CryptHash(password string) (string, error) {
+	cmd := exec.Command("openssl", "passwd", "-1", password)
+
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to execute openssl command: %v", err)
+	}
+
+	return string(output[:len(output)-1]), nil
 }
 
 func (userService *UserService) generatePassword(length int) (string, error) {

@@ -22,11 +22,11 @@ type HTTPServer struct {
 func MustLoad() *Config {
 	configPath := os.Getenv("CONFIG_PATH")
 	if configPath == "" {
-		configPath = "../../config/default.yaml"
+		log.Fatalf("config path is not set, provided path %s:", configPath)
 	}
 
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		log.Fatalf("config file does not exist: %s", configPath)
+		log.Fatalf("config file does not exist-t: %s", configPath)
 	}
 
 	var cfg Config

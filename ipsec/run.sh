@@ -87,7 +87,7 @@ fi
 
 VPN_IPSEC_PSK="$(awk '{print $5}' /etc/ipsec.secrets | cut -d'"' -f2)"
 
-if [ -z "$VPN_IPSEC_PSK" ] || [ -z "$VPN_USER" ] || [ -z "$VPN_PASSWORD" ]; then
+if [ -z "$VPN_IPSEC_PSK" ]; then
   VPN_IPSEC_PSK="$(LC_CTYPE=C tr -dc 'A-HJ-NPR-Za-km-z2-9' < /dev/urandom | head -c 30)"
   echo "Generated PSK: $VPN_IPSEC_PSK"
 fi
@@ -266,7 +266,6 @@ conn shared
   keyingtries=5
   dpddelay=30
   dpdtimeout=300
-  dpdaction=clear
   ikev2=never
   ike=$ike_algs
   phase2alg=aes_gcm-null,aes128-sha1,aes256-sha1,aes256-sha2_512,aes128-sha2,aes256-sha2
