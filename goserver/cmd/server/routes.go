@@ -16,6 +16,7 @@ func (app *application) routes() *chi.Mux {
 	r.Post("/api/v1/restart/container", app.RestartIPSecContainer)
 	r.Post("/api/v1/restart/service", app.RestartIPSecService)
 	r.Post("/api/v1/exec", app.ExecCommandInContainer)
+	r.Get("/api/v1/version", app.HandleVersion)
 
 	return r
 }

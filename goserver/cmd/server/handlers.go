@@ -34,6 +34,21 @@ func (app *application) ListUsersHandler(w http.ResponseWriter, r *http.Request)
 	}
 }
 
+func (app *application) HandleVersion(w http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]int, 1)
+	resp["version"] = 1
+
+	err := app.writeJSON(w, http.StatusOK, envolope{
+		"data": resp,
+	}, nil)
+
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+}
+
 func (app *application) AddUserHandler(w http.ResponseWriter, r *http.Request) {
 	existingUsers, err := app.fileService.ReadFile()
 
@@ -67,7 +82,15 @@ func (app *application) AddUserHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	psk, err := app.fileService.ReadPSKSecret()
+
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
 	for i, _ := range users {
+		users[i].PSKSecret = psk
 		err := app.userService.AddPassword(&users[i])
 		if err != nil {
 			app.serverErrorResponse(w, r, err)
