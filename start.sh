@@ -7,4 +7,4 @@ touch etc/ipsec.d/passwd
 touch etc/ppp/chap-secrets
 touch etc/ipsec.secrets
 
-docker-compose up -d
+docker compose up -d
