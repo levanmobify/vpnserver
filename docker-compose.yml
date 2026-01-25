@@ -13,6 +13,18 @@ services:
     privileged: true
     restart: always
 
+  openvpn:
+    image: kylemanna/openvpn:latest
+    container_name: openvpn-server
+    ports:
+      - "1194:1194/udp"
+    volumes:
+      - ./openvpn-data:/etc/openvpn
+    cap_add:
+      - NET_ADMIN
+    privileged: true
+    restart: always
+
   goserver:
     image: lmobify/goserver:latest
     container_name: goserver
@@ -24,8 +36,10 @@ services:
       - ./etc/ppp/chap-secrets:/etc/ppp/chap-secrets
       - ./etc/ipsec.d/passwd:/etc/ipsec.d/passwd
       - ./etc/ipsec.secrets:/etc/ipsec.secrets
+      - ./openvpn-data:/etc/openvpn
     environment:
       - CONFIG_PATH=/app/default.yml
     restart: always
     depends_on:
       - ipsec-mobify-server
+      - openvpn
