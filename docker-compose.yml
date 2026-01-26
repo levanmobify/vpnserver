@@ -14,7 +14,7 @@ services:
     restart: always
 
   openvpn:
-    image: kylemanna/openvpn:latest
+    image: openvpn-local:latest
     build:
       context: ./docker-openvpn
     container_name: openvpn-server
