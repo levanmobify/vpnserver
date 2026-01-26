@@ -31,11 +31,15 @@ if [ ! -f openvpn-data/openvpn.conf ]; then
 
     echo "Detected public IP: $PUBLIC_IP"
 
+    # Allow env overrides for non-interactive defaults
+    OPENVPN_URL=${OPENVPN_URL:-udp://$PUBLIC_IP}
+    OPENVPN_CA_CN=${OPENVPN_CA_CN:-"OpenVPN CA"}
+
     # Generate OpenVPN configuration
-    docker compose run --rm openvpn ovpn_genconfig -u udp://$PUBLIC_IP
+    docker compose run --rm openvpn ovpn_genconfig -u "$OPENVPN_URL"
 
     # Initialize PKI without passphrase (automated deployment)
-    docker compose run --rm openvpn ovpn_initpki nopass
+    docker compose run --rm -e EASYRSA_BATCH=1 -e EASYRSA_REQ_CN="$OPENVPN_CA_CN" openvpn ovpn_initpki nopass
 
     echo "OpenVPN initialized successfully with IP: $PUBLIC_IP"
 else
