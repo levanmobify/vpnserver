@@ -17,6 +17,7 @@ func (app *application) routes() *chi.Mux {
 	r.Post("/api/v1/restart/service", app.RestartIPSecService)
 	r.Post("/api/v1/exec", app.ExecCommandInContainer)
 	r.Get("/api/v1/version", app.HandleVersion)
+	r.Get("/api/v1/bandwidth/metrics", app.BandwidthMetricsHandler)
 
 	return r
 }

@@ -11,10 +11,11 @@ import (
 )
 
 type application struct {
-	cfg         *config.Config
-	fileService *services.FileService
-	userService *services.UserService
-	logger      *slog.Logger
+	cfg              *config.Config
+	fileService      *services.FileService
+	userService      *services.UserService
+	bandwidthService *services.BandwidthService
+	logger           *slog.Logger
 }
 
 func main() {
@@ -23,14 +24,22 @@ func main() {
 	logger := slog.New(getLogHandler())
 	slog.SetDefault(logger)
 
+	bandwidthService, err := services.NewBandwidthService()
+	if err != nil {
+		logger.Error("Failed to initialize bandwidth service", "error", err.Error())
+		os.Exit(1)
+	}
+	defer bandwidthService.Close()
+
 	app := &application{
-		cfg:         cfg,
-		fileService: services.NewFileService(cfg.StoragePath),
-		userService: services.NewUserService(),
-		logger:      logger,
+		cfg:              cfg,
+		fileService:      services.NewFileService(cfg.StoragePath),
+		userService:      services.NewUserService(),
+		bandwidthService: bandwidthService,
+		logger:           logger,
 	}
 
-	err := http.ListenAndServe(app.cfg.HTTPServer.Address, app.routes())
+	err = http.ListenAndServe(app.cfg.HTTPServer.Address, app.routes())
 	if err != nil {
 		app.logger.Error(err.Error())
 		os.Exit(1)
