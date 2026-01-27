@@ -13,10 +13,15 @@ type Config struct {
 	AuthPassword string `yaml:"auth_password" env-required:"true"`
 	LogfilePath  string `yaml:"logfile_path" evn-required:"true"`
 	HTTPServer   `yaml:"http_server"`
+	UDPServer    `yaml:"udp_server"`
 }
 
 type HTTPServer struct {
 	Address string `yaml:"address" env-default:":8080"`
+}
+
+type UDPServer struct {
+	Address string `yaml:"address" env-default:":8081"`
 }
 
 func MustLoad() *Config {

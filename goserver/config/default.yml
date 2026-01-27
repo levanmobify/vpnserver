@@ -4,3 +4,5 @@ logfile_path: "/home/overlord/"
 auth_password: "mypassword12345"
 http_server:
   address: ":8080"
+udp_server:
+  address: ":8081"
