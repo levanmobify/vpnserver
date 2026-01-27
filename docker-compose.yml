@@ -14,9 +14,7 @@ services:
     restart: always
 
   openvpn:
-    image: openvpn-local:latest
-    build:
-      context: ./docker-openvpn
+    image: lmobify/openvpn:latest
     container_name: openvpn-server
     ports:
       - "1194:1194/udp"
