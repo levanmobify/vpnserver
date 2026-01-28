@@ -1,6 +1,6 @@
 services:
   ipsec-mobify-server:
-    image: lmobify/ipsec-mobify:latest
+    image: lmobify/ipsec-mobify:bw
     container_name: ipsec-mobify-server
     ports:
       - "500:500/udp"
@@ -12,23 +12,8 @@ services:
       - ./etc/ipsec.secrets:/etc/ipsec.secrets
     privileged: true
     restart: always
-
-  openvpn:
-    image: openvpn-local:latest
-    build:
-      context: ./docker-openvpn
-    container_name: openvpn-server
-    ports:
-      - "1194:1194/udp"
-    volumes:
-      - ./openvpn-data:/etc/openvpn
-    cap_add:
-      - NET_ADMIN
-    privileged: true
-    restart: always
-
   goserver:
-    image: lmobify/goserver:latest
+    image: lmobify/goserver:bw-2
     container_name: goserver
     ports:
       - "8080:8080"
@@ -38,10 +23,10 @@ services:
       - ./etc/ppp/chap-secrets:/etc/ppp/chap-secrets
       - ./etc/ipsec.d/passwd:/etc/ipsec.d/passwd
       - ./etc/ipsec.secrets:/etc/ipsec.secrets
-      - ./openvpn-data:/etc/openvpn
+      - ./etc/bandwidth:/home/overlord/tmpfork/etc/bandwidth
+      - /var/log/openvpn:/var/log/openvpn:ro
     environment:
       - CONFIG_PATH=/app/default.yml
     restart: always
     depends_on:
       - ipsec-mobify-server
-      - openvpn
