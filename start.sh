@@ -8,9 +8,6 @@ touch etc/ipsec.d/passwd
 touch etc/ppp/chap-secrets
 touch etc/ipsec.secrets
 
-# Create OpenVPN directories
-mkdir -p openvpn-data
-mkdir -p clients
 
 # Initialize OpenVPN if not already configured
 if [ ! -f openvpn-data/openvpn.conf ]; then
