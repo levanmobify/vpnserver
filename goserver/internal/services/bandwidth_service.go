@@ -124,7 +124,7 @@ func (s *BandwidthService) collectAndAccumulate() error {
 	// Calculate IPSec delta
 	if s.lastIPSecBytes > 0 && ipsecBytes >= s.lastIPSecBytes {
 		delta := ipsecBytes - s.lastIPSecBytes
-		s.accumulator.IPSec.TotalBytesSent += delta / 2      // Approximate split
+		s.accumulator.IPSec.TotalBytesSent += delta / 2 // Approximate split
 		s.accumulator.IPSec.TotalBytesReceived += delta / 2
 	}
 	s.lastIPSecBytes = ipsecBytes
