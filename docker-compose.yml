@@ -24,7 +24,7 @@ services:
       - ./etc/ppp/chap-secrets:/etc/ppp/chap-secrets
       - ./etc/ipsec.d/passwd:/etc/ipsec.d/passwd
       - ./etc/ipsec.secrets:/etc/ipsec.secrets
-      - ./etc/bandwidth:/home/overlord/tmpfork/etc/bandwidth
+      - ./etc/bandwidth:/etc/bandwidth
       - /var/log/openvpn:/var/log/openvpn:ro
     environment:
       - CONFIG_PATH=/app/default.yml
