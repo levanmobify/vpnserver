@@ -13,7 +13,7 @@ services:
     privileged: true
     restart: always
   goserver:
-    image: lmobify/goserver:bw-2
+    image: lmobify/goserver:bw-latest
     container_name: goserver
     ports:
       - "8080:8080"
