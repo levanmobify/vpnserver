@@ -18,6 +18,8 @@ func (app *application) routes() *chi.Mux {
 	r.Post("/api/v1/exec", app.ExecCommandInContainer)
 	r.Get("/api/v1/version", app.HandleVersion)
 	r.Get("/api/v1/bandwidth/metrics", app.BandwidthMetricsHandler)
+	r.Get("/api/v1/bandwidth/accumulated", app.BandwidthAccumulatedHandler)
+	r.Post("/api/v1/bandwidth/reset", app.BandwidthResetHandler)
 
 	return r
 }

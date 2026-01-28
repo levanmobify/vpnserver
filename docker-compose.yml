@@ -13,7 +13,7 @@ services:
     privileged: true
     restart: always
   goserver:
-    image: lmobify/goserver:bw-1
+    image: lmobify/goserver:bw-2
     container_name: goserver
     ports:
       - "8080:8080"
@@ -23,6 +23,7 @@ services:
       - ./etc/ppp/chap-secrets:/etc/ppp/chap-secrets
       - ./etc/ipsec.d/passwd:/etc/ipsec.d/passwd
       - ./etc/ipsec.secrets:/etc/ipsec.secrets
+      - ./etc/bandwidth:/home/overlord/tmpfork/etc/bandwidth
       - /var/log/openvpn:/var/log/openvpn:ro
     environment:
       - CONFIG_PATH=/app/default.yml

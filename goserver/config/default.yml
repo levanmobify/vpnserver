@@ -6,3 +6,6 @@ http_server:
   address: ":8080"
 udp_server:
   address: ":8081"
+bandwidth_tracking:
+  collection_interval: "60s"
+  storage_path: "bandwidth"

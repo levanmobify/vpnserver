@@ -248,3 +248,31 @@ func (app *application) BandwidthMetricsHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 }
+
+func (app *application) BandwidthAccumulatedHandler(w http.ResponseWriter, r *http.Request) {
+	metrics, err := app.bandwidthService.GetAccumulatedMetrics()
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envolope{"data": metrics}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+}
+
+func (app *application) BandwidthResetHandler(w http.ResponseWriter, r *http.Request) {
+	err := app.bandwidthService.ResetAccumulator()
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envolope{"message": "accumulator reset successfully"}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+}

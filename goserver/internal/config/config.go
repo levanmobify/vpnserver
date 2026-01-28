@@ -8,12 +8,13 @@ import (
 )
 
 type Config struct {
-	Env          string `yaml:"env" env-required:"true"`
-	StoragePath  string `yaml:"storage_path" env-required:"true"`
-	AuthPassword string `yaml:"auth_password" env-required:"true"`
-	LogfilePath  string `yaml:"logfile_path" evn-required:"true"`
-	HTTPServer   `yaml:"http_server"`
-	UDPServer    `yaml:"udp_server"`
+	Env               string `yaml:"env" env-required:"true"`
+	StoragePath       string `yaml:"storage_path" env-required:"true"`
+	AuthPassword      string `yaml:"auth_password" env-required:"true"`
+	LogfilePath       string `yaml:"logfile_path" evn-required:"true"`
+	HTTPServer        `yaml:"http_server"`
+	UDPServer         `yaml:"udp_server"`
+	BandwidthTracking `yaml:"bandwidth_tracking"`
 }
 
 type HTTPServer struct {
@@ -22,6 +23,11 @@ type HTTPServer struct {
 
 type UDPServer struct {
 	Address string `yaml:"address" env-default:":8081"`
+}
+
+type BandwidthTracking struct {
+	CollectionInterval string `yaml:"collection_interval" env-default:"60s"`
+	StoragePath        string `yaml:"storage_path" env-default:"bandwidth"`
 }
 
 func MustLoad() *Config {
