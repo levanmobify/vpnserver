@@ -820,7 +820,7 @@ create_firewall_rules() {
 		harden_udp_burst="${VPN_UDP_BURST:-600}"
 		harden_syn_pps="${VPN_SYN_PPS:-50}"
 		harden_syn_burst="${VPN_SYN_BURST:-100}"
-		harden_conn="${VPN_CONN_LIMIT:-200}"
+		harden_conn="${VPN_CONN_LIMIT:-2000}"
 		harden_udp_deny="${VPN_DENY_UDP_PORTS:-11211,1900,19,17,389,520}"
 		harden_tcp_deny="${VPN_DENY_TCP_PORTS:-25,465,587,135,137,138,139,445}"
 		for fw_flag in "" "--permanent"; do
@@ -855,7 +855,7 @@ create_firewall_rules() {
 		harden_udp_burst="${VPN_UDP_BURST:-600}"
 		harden_syn_pps="${VPN_SYN_PPS:-50}"
 		harden_syn_burst="${VPN_SYN_BURST:-100}"
-		harden_conn="${VPN_CONN_LIMIT:-200}"
+		harden_conn="${VPN_CONN_LIMIT:-2000}"
 		harden_udp_deny="${VPN_DENY_UDP_PORTS:-11211,1900,19,17,389,520}"
 		harden_tcp_deny="${VPN_DENY_TCP_PORTS:-25,465,587,135,137,138,139,445}"
 		echo "[Unit]
@@ -925,7 +925,7 @@ remove_firewall_rules() {
 		harden_udp_burst="${VPN_UDP_BURST:-600}"
 		harden_syn_pps="${VPN_SYN_PPS:-50}"
 		harden_syn_burst="${VPN_SYN_BURST:-100}"
-		harden_conn="${VPN_CONN_LIMIT:-200}"
+		harden_conn="${VPN_CONN_LIMIT:-2000}"
 		harden_udp_deny="${VPN_DENY_UDP_PORTS:-11211,1900,19,17,389,520}"
 		harden_tcp_deny="${VPN_DENY_TCP_PORTS:-25,465,587,135,137,138,139,445}"
 		for fw_flag in "" "--permanent"; do

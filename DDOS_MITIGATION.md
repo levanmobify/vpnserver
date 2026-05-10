@@ -65,7 +65,7 @@ Each VPN client is capped at 50 new TCP connections per second. Stops SYN flood 
 
 ### 4.5 Per-client concurrent-connection cap
 
-Each VPN client is limited to 200 simultaneous connections. Ordinary browsing uses around 30. Heavy torrent users could notice this limit; threshold is tunable.
+Each VPN client is limited to 2,000 simultaneous connections. Ordinary browsing uses 30; modern mobile clients with multiple apps can reach several hundred. The cap leaves comfortable headroom for legitimate use while still catching flood patterns (which open tens of thousands).
 
 ### 4.6 Egress port denylist
 
@@ -107,7 +107,7 @@ All thresholds are exposed as environment variables, so they can be tuned withou
 | `VPN_UDP_BURST` | `600` | UDP burst tolerance |
 | `VPN_SYN_PPS` | `50` | TCP SYN/sec per client |
 | `VPN_SYN_BURST` | `100` | TCP SYN burst tolerance |
-| `VPN_CONN_LIMIT` | `200` | Max concurrent connections per client |
+| `VPN_CONN_LIMIT` | `2000` | Max concurrent connections per client |
 | `VPN_DENY_UDP_PORTS` | `11211,1900,19,17,389,520` | Outbound UDP ports to drop |
 | `VPN_DENY_TCP_PORTS` | `25,465,587,135,137,138,139,445` | Outbound TCP ports to drop |
 
