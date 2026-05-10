@@ -812,6 +812,27 @@ create_firewall_rules() {
 		# Set NAT for the VPN subnet
 		firewall-cmd -q --direct --add-rule ipv4 nat POSTROUTING 0 -s 10.8.0.0/24 ! -d 10.8.0.0/24 -j MASQUERADE
 		firewall-cmd -q --permanent --direct --add-rule ipv4 nat POSTROUTING 0 -s 10.8.0.0/24 ! -d 10.8.0.0/24 -j MASQUERADE
+		# Abuse-mitigation hardening (DDoS / spam / amplification).
+		# Anti-spoof + DNS hijack + per-source rate limits + abuse-port denylist.
+		# Tunable via env: VPN_DNS_RESOLVER, VPN_UDP_PPS, VPN_SYN_PPS, VPN_CONN_LIMIT.
+		harden_dns="${VPN_DNS_RESOLVER:-1.1.1.1}"
+		harden_udp_pps="${VPN_UDP_PPS:-300}"
+		harden_udp_burst="${VPN_UDP_BURST:-600}"
+		harden_syn_pps="${VPN_SYN_PPS:-50}"
+		harden_syn_burst="${VPN_SYN_BURST:-100}"
+		harden_conn="${VPN_CONN_LIMIT:-200}"
+		harden_udp_deny="${VPN_DENY_UDP_PORTS:-11211,1900,19,17,389,520}"
+		harden_tcp_deny="${VPN_DENY_TCP_PORTS:-25,465,587,135,137,138,139,445}"
+		for fw_flag in "" "--permanent"; do
+			firewall-cmd -q $fw_flag --direct --add-rule ipv4 filter FORWARD 0 -i tun+ ! -s 10.8.0.0/24 -j DROP
+			firewall-cmd -q $fw_flag --direct --add-rule ipv4 nat PREROUTING 0 -i tun+ -p udp --dport 53 -j DNAT --to-destination "$harden_dns":53
+			firewall-cmd -q $fw_flag --direct --add-rule ipv4 nat PREROUTING 0 -i tun+ -p tcp --dport 53 -j DNAT --to-destination "$harden_dns":53
+			firewall-cmd -q $fw_flag --direct --add-rule ipv4 filter FORWARD 0 -i tun+ -p udp -m hashlimit --hashlimit-name ovpn_udp --hashlimit-mode srcip --hashlimit-above "$harden_udp_pps"/sec --hashlimit-burst "$harden_udp_burst" -j DROP
+			firewall-cmd -q $fw_flag --direct --add-rule ipv4 filter FORWARD 0 -i tun+ -p tcp --syn -m hashlimit --hashlimit-name ovpn_syn --hashlimit-mode srcip --hashlimit-above "$harden_syn_pps"/sec --hashlimit-burst "$harden_syn_burst" -j DROP
+			firewall-cmd -q $fw_flag --direct --add-rule ipv4 filter FORWARD 0 -i tun+ -m connlimit --connlimit-above "$harden_conn" --connlimit-mask 32 -j DROP
+			firewall-cmd -q $fw_flag --direct --add-rule ipv4 filter FORWARD 0 -i tun+ -p udp -m multiport --dports "$harden_udp_deny" -j DROP
+			firewall-cmd -q $fw_flag --direct --add-rule ipv4 filter FORWARD 0 -i tun+ -p tcp -m multiport --dports "$harden_tcp_deny" -j DROP
+		done
 		if [[ -n "$ip6" ]]; then
 			firewall-cmd -q --zone=trusted --add-source=fddd:1194:1194:1194::/64
 			firewall-cmd -q --permanent --zone=trusted --add-source=fddd:1194:1194:1194::/64
@@ -828,6 +849,15 @@ create_firewall_rules() {
 			iptables_path=$(command -v iptables-legacy)
 			ip6tables_path=$(command -v ip6tables-legacy)
 		fi
+		# Abuse-mitigation hardening — tunable via env at install time.
+		harden_dns="${VPN_DNS_RESOLVER:-1.1.1.1}"
+		harden_udp_pps="${VPN_UDP_PPS:-300}"
+		harden_udp_burst="${VPN_UDP_BURST:-600}"
+		harden_syn_pps="${VPN_SYN_PPS:-50}"
+		harden_syn_burst="${VPN_SYN_BURST:-100}"
+		harden_conn="${VPN_CONN_LIMIT:-200}"
+		harden_udp_deny="${VPN_DENY_UDP_PORTS:-11211,1900,19,17,389,520}"
+		harden_tcp_deny="${VPN_DENY_TCP_PORTS:-25,465,587,135,137,138,139,445}"
 		echo "[Unit]
 After=network-online.target
 Wants=network-online.target
@@ -837,10 +867,27 @@ ExecStart=$iptables_path -w 5 -t nat -A POSTROUTING -s 10.8.0.0/24 ! -d 10.8.0.0
 ExecStart=$iptables_path -w 5 -I INPUT -p $protocol --dport $port -j ACCEPT
 ExecStart=$iptables_path -w 5 -I FORWARD -s 10.8.0.0/24 -j ACCEPT
 ExecStart=$iptables_path -w 5 -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
+# Hardening: anti-spoof + DNS hijack + rate limits + port denylist (run last so they sit at chain top)
+ExecStart=$iptables_path -w 5 -I FORWARD -i tun+ ! -s 10.8.0.0/24 -j DROP
+ExecStart=$iptables_path -w 5 -t nat -I PREROUTING -i tun+ -p udp --dport 53 -j DNAT --to-destination $harden_dns:53
+ExecStart=$iptables_path -w 5 -t nat -I PREROUTING -i tun+ -p tcp --dport 53 -j DNAT --to-destination $harden_dns:53
+ExecStart=$iptables_path -w 5 -I FORWARD -i tun+ -p udp -m hashlimit --hashlimit-name ovpn_udp --hashlimit-mode srcip --hashlimit-above $harden_udp_pps/sec --hashlimit-burst $harden_udp_burst -j DROP
+ExecStart=$iptables_path -w 5 -I FORWARD -i tun+ -p tcp --syn -m hashlimit --hashlimit-name ovpn_syn --hashlimit-mode srcip --hashlimit-above $harden_syn_pps/sec --hashlimit-burst $harden_syn_burst -j DROP
+ExecStart=$iptables_path -w 5 -I FORWARD -i tun+ -m connlimit --connlimit-above $harden_conn --connlimit-mask 32 -j DROP
+ExecStart=$iptables_path -w 5 -I FORWARD -i tun+ -p udp -m multiport --dports $harden_udp_deny -j DROP
+ExecStart=$iptables_path -w 5 -I FORWARD -i tun+ -p tcp -m multiport --dports $harden_tcp_deny -j DROP
 ExecStop=$iptables_path -w 5 -t nat -D POSTROUTING -s 10.8.0.0/24 ! -d 10.8.0.0/24 -j MASQUERADE
 ExecStop=$iptables_path -w 5 -D INPUT -p $protocol --dport $port -j ACCEPT
 ExecStop=$iptables_path -w 5 -D FORWARD -s 10.8.0.0/24 -j ACCEPT
-ExecStop=$iptables_path -w 5 -D FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT" > /etc/systemd/system/openvpn-iptables.service
+ExecStop=$iptables_path -w 5 -D FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
+ExecStop=$iptables_path -w 5 -D FORWARD -i tun+ ! -s 10.8.0.0/24 -j DROP
+ExecStop=$iptables_path -w 5 -t nat -D PREROUTING -i tun+ -p udp --dport 53 -j DNAT --to-destination $harden_dns:53
+ExecStop=$iptables_path -w 5 -t nat -D PREROUTING -i tun+ -p tcp --dport 53 -j DNAT --to-destination $harden_dns:53
+ExecStop=$iptables_path -w 5 -D FORWARD -i tun+ -p udp -m hashlimit --hashlimit-name ovpn_udp --hashlimit-mode srcip --hashlimit-above $harden_udp_pps/sec --hashlimit-burst $harden_udp_burst -j DROP
+ExecStop=$iptables_path -w 5 -D FORWARD -i tun+ -p tcp --syn -m hashlimit --hashlimit-name ovpn_syn --hashlimit-mode srcip --hashlimit-above $harden_syn_pps/sec --hashlimit-burst $harden_syn_burst -j DROP
+ExecStop=$iptables_path -w 5 -D FORWARD -i tun+ -m connlimit --connlimit-above $harden_conn --connlimit-mask 32 -j DROP
+ExecStop=$iptables_path -w 5 -D FORWARD -i tun+ -p udp -m multiport --dports $harden_udp_deny -j DROP
+ExecStop=$iptables_path -w 5 -D FORWARD -i tun+ -p tcp -m multiport --dports $harden_tcp_deny -j DROP" > /etc/systemd/system/openvpn-iptables.service
 		if [[ -n "$ip6" ]]; then
 			echo "ExecStart=$ip6tables_path -w 5 -t nat -A POSTROUTING -s fddd:1194:1194:1194::/64 ! -d fddd:1194:1194:1194::/64 -j MASQUERADE
 ExecStart=$ip6tables_path -w 5 -I FORWARD -s fddd:1194:1194:1194::/64 -j ACCEPT
@@ -871,6 +918,26 @@ remove_firewall_rules() {
 		firewall-cmd -q --permanent --zone=trusted --remove-source=10.8.0.0/24
 		firewall-cmd -q --direct --remove-rule ipv4 nat POSTROUTING 0 -s 10.8.0.0/24 ! -d 10.8.0.0/24 -j MASQUERADE
 		firewall-cmd -q --permanent --direct --remove-rule ipv4 nat POSTROUTING 0 -s 10.8.0.0/24 ! -d 10.8.0.0/24 -j MASQUERADE
+		# Remove abuse-mitigation hardening rules (mirror of create_firewall_rules).
+		# If installed with custom env values, set the same VPN_* envs before running this.
+		harden_dns="${VPN_DNS_RESOLVER:-1.1.1.1}"
+		harden_udp_pps="${VPN_UDP_PPS:-300}"
+		harden_udp_burst="${VPN_UDP_BURST:-600}"
+		harden_syn_pps="${VPN_SYN_PPS:-50}"
+		harden_syn_burst="${VPN_SYN_BURST:-100}"
+		harden_conn="${VPN_CONN_LIMIT:-200}"
+		harden_udp_deny="${VPN_DENY_UDP_PORTS:-11211,1900,19,17,389,520}"
+		harden_tcp_deny="${VPN_DENY_TCP_PORTS:-25,465,587,135,137,138,139,445}"
+		for fw_flag in "" "--permanent"; do
+			firewall-cmd -q $fw_flag --direct --remove-rule ipv4 filter FORWARD 0 -i tun+ ! -s 10.8.0.0/24 -j DROP 2>/dev/null || true
+			firewall-cmd -q $fw_flag --direct --remove-rule ipv4 nat PREROUTING 0 -i tun+ -p udp --dport 53 -j DNAT --to-destination "$harden_dns":53 2>/dev/null || true
+			firewall-cmd -q $fw_flag --direct --remove-rule ipv4 nat PREROUTING 0 -i tun+ -p tcp --dport 53 -j DNAT --to-destination "$harden_dns":53 2>/dev/null || true
+			firewall-cmd -q $fw_flag --direct --remove-rule ipv4 filter FORWARD 0 -i tun+ -p udp -m hashlimit --hashlimit-name ovpn_udp --hashlimit-mode srcip --hashlimit-above "$harden_udp_pps"/sec --hashlimit-burst "$harden_udp_burst" -j DROP 2>/dev/null || true
+			firewall-cmd -q $fw_flag --direct --remove-rule ipv4 filter FORWARD 0 -i tun+ -p tcp --syn -m hashlimit --hashlimit-name ovpn_syn --hashlimit-mode srcip --hashlimit-above "$harden_syn_pps"/sec --hashlimit-burst "$harden_syn_burst" -j DROP 2>/dev/null || true
+			firewall-cmd -q $fw_flag --direct --remove-rule ipv4 filter FORWARD 0 -i tun+ -m connlimit --connlimit-above "$harden_conn" --connlimit-mask 32 -j DROP 2>/dev/null || true
+			firewall-cmd -q $fw_flag --direct --remove-rule ipv4 filter FORWARD 0 -i tun+ -p udp -m multiport --dports "$harden_udp_deny" -j DROP 2>/dev/null || true
+			firewall-cmd -q $fw_flag --direct --remove-rule ipv4 filter FORWARD 0 -i tun+ -p tcp -m multiport --dports "$harden_tcp_deny" -j DROP 2>/dev/null || true
+		done
 		if grep -qs "server-ipv6" "$OVPN_CONF"; then
 			ip6=$(firewall-cmd --direct --get-rules ipv6 nat POSTROUTING | grep '\-s fddd:1194:1194:1194::/64 '"'"'!'"'"' -d fddd:1194:1194:1194::/64' | grep -oE '[^ ]+$')
 			firewall-cmd -q --zone=trusted --remove-source=fddd:1194:1194:1194::/64

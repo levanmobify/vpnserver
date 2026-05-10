@@ -447,6 +447,54 @@ if ! iptables -t nat -C POSTROUTING -s "$L2TP_NET" -o "$NET_IFACE" -j MASQUERADE
     $ipp -s "$XAUTH_NET" -o "$NET_IFACE" ! -d "$XAUTH_NET" -j MASQUERADE
   fi
   $ipp -s "$L2TP_NET" -o "$NET_IFACE" -j MASQUERADE
+
+  # ---- Abuse mitigation rules (DDoS / spam / amplification) ----
+  # Tunables: override via env if defaults need to change for heavy users.
+  VPN_DNS_RESOLVER=${VPN_DNS_RESOLVER:-'1.1.1.1'}
+  VPN_UDP_PPS=${VPN_UDP_PPS:-'300'}
+  VPN_UDP_BURST=${VPN_UDP_BURST:-'600'}
+  VPN_SYN_PPS=${VPN_SYN_PPS:-'50'}
+  VPN_SYN_BURST=${VPN_SYN_BURST:-'100'}
+  VPN_CONN_LIMIT=${VPN_CONN_LIMIT:-'200'}
+  VPN_DENY_UDP_PORTS=${VPN_DENY_UDP_PORTS:-'11211,1900,19,17,389,520'}
+  VPN_DENY_TCP_PORTS=${VPN_DENY_TCP_PORTS:-'25,465,587,135,137,138,139,445'}
+
+  # 1. Anti-spoof: drop forwarded packets whose source isn't a legitimate VPN IP.
+  #    XAUTH already source-restricted by upstream rules; this covers L2TP (ppp+).
+  $ipf 1 -i ppp+ ! -s "$L2TP_NET" -j DROP
+
+  # 2. DNS hijack: redirect any client DNS query to the chosen resolver.
+  #    Stops the exact attack pattern (UDP/53 flood at arbitrary targets).
+  iptables -t nat -I PREROUTING -i ppp+ -p udp --dport 53 -j DNAT --to-destination "$VPN_DNS_RESOLVER":53
+  iptables -t nat -I PREROUTING -i ppp+ -p tcp --dport 53 -j DNAT --to-destination "$VPN_DNS_RESOLVER":53
+  iptables -t nat -I PREROUTING -s "$XAUTH_NET" -p udp --dport 53 -j DNAT --to-destination "$VPN_DNS_RESOLVER":53
+  iptables -t nat -I PREROUTING -s "$XAUTH_NET" -p tcp --dport 53 -j DNAT --to-destination "$VPN_DNS_RESOLVER":53
+
+  # 3. Per-source UDP packet-rate cap (the most important rule — kills floods).
+  $ipf 1 -i ppp+ -p udp \
+    -m hashlimit --hashlimit-name vpn_l2tp_udp \
+    --hashlimit-mode srcip --hashlimit-above "$VPN_UDP_PPS"/sec --hashlimit-burst "$VPN_UDP_BURST" -j DROP
+  $ipf 1 -s "$XAUTH_NET" -p udp \
+    -m hashlimit --hashlimit-name vpn_xauth_udp \
+    --hashlimit-mode srcip --hashlimit-above "$VPN_UDP_PPS"/sec --hashlimit-burst "$VPN_UDP_BURST" -j DROP
+
+  # 4. Per-source TCP SYN-rate cap (kills SYN floods, port scans).
+  $ipf 1 -i ppp+ -p tcp --syn \
+    -m hashlimit --hashlimit-name vpn_l2tp_syn \
+    --hashlimit-mode srcip --hashlimit-above "$VPN_SYN_PPS"/sec --hashlimit-burst "$VPN_SYN_BURST" -j DROP
+  $ipf 1 -s "$XAUTH_NET" -p tcp --syn \
+    -m hashlimit --hashlimit-name vpn_xauth_syn \
+    --hashlimit-mode srcip --hashlimit-above "$VPN_SYN_PPS"/sec --hashlimit-burst "$VPN_SYN_BURST" -j DROP
+
+  # 5. Per-source concurrent-connection cap.
+  $ipf 1 -i ppp+ -m connlimit --connlimit-above "$VPN_CONN_LIMIT" --connlimit-mask 32 -j DROP
+  $ipf 1 -s "$XAUTH_NET" -m connlimit --connlimit-above "$VPN_CONN_LIMIT" --connlimit-mask 32 -j DROP
+
+  # 6. Egress port denylist (amplifier protocols, mail relays, SMB worms).
+  $ipf 1 -i ppp+ -p udp -m multiport --dports "$VPN_DENY_UDP_PORTS" -j DROP
+  $ipf 1 -i ppp+ -p tcp -m multiport --dports "$VPN_DENY_TCP_PORTS" -j DROP
+  $ipf 1 -s "$XAUTH_NET" -p udp -m multiport --dports "$VPN_DENY_UDP_PORTS" -j DROP
+  $ipf 1 -s "$XAUTH_NET" -p tcp -m multiport --dports "$VPN_DENY_TCP_PORTS" -j DROP
 fi
 
 case $VPN_ANDROID_MTU_FIX in
